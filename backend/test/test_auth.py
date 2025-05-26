@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import requests
 import json
-
-BASE_URL = 'http://localhost:8002/api'
+from config import BASE_URL
 
 def test_authentication():
     print("🔐 Testing Authentication System")

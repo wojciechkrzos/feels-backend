@@ -2,8 +2,7 @@ import requests
 import json
 import random
 import string
-
-BASE_URL = 'http://localhost:8002/api'
+from config import BASE_URL
 
 def random_string(length=8):
     """Generate a random string for testing"""

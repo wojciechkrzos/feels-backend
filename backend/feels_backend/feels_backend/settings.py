@@ -10,22 +10,27 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR.parent / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-h_l4^2&!osigm0881&e)dpypv&o95_^9e&57bftp*@$*&%_wh7'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-development')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
 
 # Application definition
@@ -74,13 +79,13 @@ WSGI_APPLICATION = 'feels_backend.wsgi.application'
 # Neo4j Database Configuration
 # For development without Neo4j running, we'll use a mock connection
 # In production, change this to your actual Neo4j instance
-NEOMODEL_NEO4J_BOLT_URL = 'bolt://neo4j:password@localhost:7687'
+NEOMODEL_NEO4J_BOLT_URL = os.getenv('NEO4J_BOLT_URL', 'bolt://neo4j:password@localhost:7687')
 
 # We'll also keep the SQLite database for Django's built-in features
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / os.getenv('DATABASE_NAME', 'db.sqlite3'),
     }
 }
 

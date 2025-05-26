@@ -2,8 +2,7 @@
 import requests
 import json
 import time
-
-BASE_URL = "http://localhost:8002/api"
+from config import BASE_URL
 
 def main():
     print("🚀 Testing Feels Backend API")
@@ -93,7 +92,7 @@ def main():
     
     print("\n" + "=" * 40)
     print("✅ Basic API test completed!")
-    print("🌐 Demo interface: http://localhost:8002/api/demo/")
+    print(f"🌐 Demo interface: {BASE_URL}/demo/")
 
 if __name__ == "__main__":
     main()
