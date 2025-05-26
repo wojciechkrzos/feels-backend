@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'apps.core',
+    'django_neomodel',
+    'apps.core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [
@@ -70,16 +71,18 @@ TEMPLATES = [
 WSGI_APPLICATION = 'feels_backend.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# Neo4j Database Configuration
+# For development without Neo4j running, we'll use a mock connection
+# In production, change this to your actual Neo4j instance
+NEOMODEL_NEO4J_BOLT_URL = 'bolt://neo4j:password@localhost:7687'
 
+# We'll also keep the SQLite database for Django's built-in features
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -115,7 +118,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
