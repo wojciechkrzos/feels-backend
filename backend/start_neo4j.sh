@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Load environment variables from .env file
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+# Set defaults if not provided
+NEO4J_USER=${NEO4J_USER:-neo4j}
+NEO4J_PASSWORD=${NEO4J_PASSWORD:-password}
+NEO4J_PORT=${NEO4J_PORT:-7687}
+
 echo "🚀 Starting Neo4j container for Feels Backend..."
 
 # Check if container already exists
@@ -11,8 +21,8 @@ else
     sudo docker run -d \
         --name neo4j-feels \
         -p 7474:7474 \
-        -p 7687:7687 \
-        -e NEO4J_AUTH=neo4j/password \
+        -p ${NEO4J_PORT}:7687 \
+        -e NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD} \
         -v neo4j-data:/data \
         neo4j:latest
 fi
@@ -24,8 +34,8 @@ sleep 10
 if sudo docker ps | grep -q neo4j-feels; then
     echo "✅ Neo4j is running successfully!"
     echo "🌐 Web interface: http://localhost:7474"
-    echo "🔌 Bolt connection: bolt://localhost:7687"
-    echo "🔑 Credentials: neo4j/password"
+    echo "🔌 Bolt connection: bolt://localhost:${NEO4J_PORT}"
+    echo "🔑 Credentials: ${NEO4J_USER}/${NEO4J_PASSWORD}"
 else
     echo "❌ Failed to start Neo4j container"
     exit 1

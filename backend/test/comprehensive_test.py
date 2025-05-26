@@ -5,8 +5,7 @@ import time
 import sys
 import random
 import string
-
-BASE_URL = "http://localhost:8002/api"
+from config import BASE_URL
 
 def generate_unique_username():
     """Generate a unique username for testing"""
@@ -252,10 +251,10 @@ def test_demo_interface():
     print("\n🎨 Testing Demo Interface...")
     
     try:
-        response = requests.get(f"http://localhost:8002/api/demo/")
+        response = requests.get(f"{BASE_URL}/demo/")
         
         if response.status_code == 200:
-            print(f"✅ Demo interface available at http://localhost:8002/api/demo/")
+            print(f"✅ Demo interface available at {BASE_URL}/demo/")
             return True
         else:
             print(f"❌ Demo interface failed - Status: {response.status_code}")

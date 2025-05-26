@@ -2,8 +2,7 @@
 import requests
 import json
 from datetime import datetime
-
-BASE_URL = 'http://localhost:8002/api'
+from config import BASE_URL
 
 def test_api():
     print("🎭 Testing Feels Backend API")

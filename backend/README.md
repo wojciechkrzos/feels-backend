@@ -53,21 +53,37 @@ source venv/bin/activate  # On Windows: venv\\Scripts\\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure Neo4j
-Make sure Neo4j is running and update the connection string in `feels_backend/settings.py`:
-```python
-NEOMODEL_NEO4J_BOLT_URL = 'bolt://neo4j:your_password@localhost:7687'
+### 2. Configure Environment Variables
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env with your configuration
+nano .env  # or use your preferred editor
 ```
 
-### 3. Install Neo4j Database Schema
+See [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) for detailed configuration instructions.
+
+### 3. Start Neo4j Database
+```bash
+# This will use your .env configuration
+./start_neo4j.sh
+```
+
+### 4. Install Neo4j Database Schema
 ```bash
 cd feels_backend
 python manage.py install_labels
 ```
 
-### 4. Populate with Sample Data
+### 5. Populate with Sample Data
 ```bash
 python manage.py populate_db
+```
+
+### 6. Run the Development Server
+```bash
+python manage.py runserver 0.0.0.0:${DJANGO_PORT:-8002}
 ```
 
 ### 5. Run the Development Server
