@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from apps.core.models import Account, Feeling, FeelingType, Post, Comment, Chat, Message
 from datetime import datetime
 import random
+import hashlib
 
 
 class Command(BaseCommand):
@@ -80,11 +81,15 @@ class Command(BaseCommand):
         
         accounts = {}
         for acc_data in accounts_data:
+            # Create a simple password hash for demo accounts
+            password_hash = hashlib.sha256(f"password123_{acc_data['username']}".encode()).hexdigest()
+            
             account = Account(
                 username=acc_data['username'],
                 email=acc_data['email'],
                 display_name=acc_data['display_name'],
-                bio=f"Sharing my emotional journey as {acc_data['display_name']}"
+                bio=f"Sharing my emotional journey as {acc_data['display_name']}",
+                password_hash=password_hash
             ).save()
             accounts[acc_data['username']] = account
             self.stdout.write(f'Created account: {acc_data["username"]}')
