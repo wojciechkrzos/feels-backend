@@ -11,8 +11,8 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR.parent / '.env')
 
 # Configuration constants
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8002/api')
-DJANGO_PORT = int(os.getenv('DJANGO_PORT', '8002'))
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8000/api')
+DJANGO_PORT = int(os.getenv('DJANGO_PORT', '8000'))
 NEO4J_HOST = os.getenv('NEO4J_HOST', 'localhost')
 NEO4J_PORT = int(os.getenv('NEO4J_PORT', '7687'))
 NEO4J_USER = os.getenv('NEO4J_USER', 'neo4j')
