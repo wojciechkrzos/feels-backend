@@ -270,7 +270,7 @@ class DemoView(View):
 
     <script>
         let currentToken = null;
-        const BASE_URL = 'http://localhost:8002/api';
+        const BASE_URL = 'http://localhost:8000/api';
 
         function showResponse(elementId, data, isError = false) {
             const element = document.getElementById(elementId);

@@ -147,16 +147,31 @@ class PostView(View):
                 })
             else:
                 posts = Post.nodes.all()
+                posts_data = []
+                for post in posts:
+                    author = post.author.single()
+                    feeling = post.feeling.single()
+                    
+                    post_data = {
+                        'uid': post.uid,
+                        'body': post.body[:100] + '...' if len(post.body) > 100 else post.body,
+                        'created_at': str(post.created_at),
+                        'likes_count': post.likes_count,
+                        'comments_count': post.comments_count,
+                        'author': {
+                            'uid': author.uid if author else None,
+                            'username': author.username if author else 'Unknown',
+                            'display_name': author.display_name if author else 'Unknown'
+                        },
+                        'feeling': {
+                            'name': feeling.name,
+                            'color': feeling.color
+                        } if feeling else None
+                    }
+                    posts_data.append(post_data)
+                
                 return JsonResponse({
-                    'posts': [
-                        {
-                            'uid': post.uid,
-                            'body': post.body[:100] + '...' if len(post.body) > 100 else post.body,
-                            'created_at': str(post.created_at),
-                            'likes_count': post.likes_count,
-                            'author_username': post.author.single().username if post.author.single() else 'Unknown'
-                        } for post in posts
-                    ]
+                    'posts': posts_data
                 })
         except Post.DoesNotExist:
             return JsonResponse({'error': 'Post not found'}, status=404)
@@ -182,18 +197,35 @@ class PostView(View):
             post.author.connect(author)
             
             # Connect to feeling if provided
+            feeling_connected = False
             if 'feeling_name' in data:
-                feeling = Feeling.nodes.get(name=data['feeling_name'])
-                post.feeling.connect(feeling)
+                try:
+                    # Use filter().first() to handle potential duplicates
+                    feeling = Feeling.nodes.filter(name=data['feeling_name']).first()
+                    if feeling:
+                        post.feeling.connect(feeling)
+                        feeling_connected = True
+                    else:
+                        print(f"Feeling '{data['feeling_name']}' not found in database")
+                except Exception as feeling_error:
+                    # Log the feeling connection error but don't fail the post creation
+                    print(f"Error connecting feeling '{data['feeling_name']}': {str(feeling_error)}")
             
             # Update author's feelings shared count
             author.feelings_shared_count += 1
             author.save()
             
-            return JsonResponse({
+            response_data = {
                 'uid': post.uid,
                 'message': 'Post created successfully'
-            }, status=201)
+            }
+            
+            if 'feeling_name' in data:
+                response_data['feeling_connected'] = feeling_connected
+                if not feeling_connected:
+                    response_data['warning'] = f"Feeling '{data['feeling_name']}' not found or could not be connected"
+            
+            return JsonResponse(response_data, status=201)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
