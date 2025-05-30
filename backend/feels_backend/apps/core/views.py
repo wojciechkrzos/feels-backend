@@ -147,16 +147,31 @@ class PostView(View):
                 })
             else:
                 posts = Post.nodes.all()
+                posts_data = []
+                for post in posts:
+                    author = post.author.single()
+                    feeling = post.feeling.single()
+                    
+                    post_data = {
+                        'uid': post.uid,
+                        'body': post.body[:100] + '...' if len(post.body) > 100 else post.body,
+                        'created_at': str(post.created_at),
+                        'likes_count': post.likes_count,
+                        'comments_count': post.comments_count,
+                        'author': {
+                            'uid': author.uid if author else None,
+                            'username': author.username if author else 'Unknown',
+                            'display_name': author.display_name if author else 'Unknown'
+                        },
+                        'feeling': {
+                            'name': feeling.name,
+                            'color': feeling.color
+                        } if feeling else None
+                    }
+                    posts_data.append(post_data)
+                
                 return JsonResponse({
-                    'posts': [
-                        {
-                            'uid': post.uid,
-                            'body': post.body[:100] + '...' if len(post.body) > 100 else post.body,
-                            'created_at': str(post.created_at),
-                            'likes_count': post.likes_count,
-                            'author_username': post.author.single().username if post.author.single() else 'Unknown'
-                        } for post in posts
-                    ]
+                    'posts': posts_data
                 })
         except Post.DoesNotExist:
             return JsonResponse({'error': 'Post not found'}, status=404)
