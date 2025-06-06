@@ -1,7 +1,8 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 import json
 from datetime import datetime
 
@@ -12,10 +13,47 @@ from ..authentication import authenticate_request
 class FriendRequestView(APIView):
     """API views for Friend Request management"""
     
-    @method_decorator(csrf_exempt)
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
-    
+    @extend_schema(
+        summary="Get friend requests",
+        description="Get friend requests for the authenticated user. Can filter by type (received, sent, or all).",
+        parameters=[
+            OpenApiParameter(
+                name='type',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Type of requests to retrieve: received, sent, or all (default: received)',
+                enum=['received', 'sent', 'all']
+            )
+        ],
+        responses={
+            200: {
+                "description": "List of friend requests",
+                "example": {
+                    "friend_requests": [
+                        {
+                            "uid": "req_123",
+                            "sender": {
+                                "uid": "acc_456",
+                                "username": "johndoe",
+                                "display_name": "John Doe"
+                            },
+                            "receiver": {
+                                "uid": "acc_789",
+                                "username": "janedoe",
+                                "display_name": "Jane Doe"
+                            },
+                            "status": "pending",
+                            "created_at": "2023-12-01T10:00:00Z"
+                        }
+                    ],
+                    "type": "received",
+                    "count": 1
+                }
+            },
+            401: {"description": "Authentication required"},
+            500: {"description": "Internal server error"}
+        }
+    )
     @authenticate_request
     def get(self, request):
         """Get friend requests for authenticated user"""
@@ -71,13 +109,53 @@ class FriendRequestView(APIView):
                     }
                 })
             
-            return JsonResponse({
+            return Response({
                 'friend_requests': requests_data,
                 'count': len(requests_data)
             })
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+    @extend_schema(
+        summary="Send a friend request",
+        description="Send a friend request to another user. Requires authentication.",
+        request={
+            "type": "object",
+            "properties": {
+                "receiver_uid": {"type": "string", "description": "UID of the user to send friend request to"},
+                "message": {"type": "string", "description": "Optional message with the friend request"}
+            },
+            "required": ["receiver_uid"],
+            "example": {
+                "receiver_uid": "acc_789",
+                "message": "Hi! I'd like to be friends."
+            }
+        },
+        responses={
+            201: {
+                "description": "Friend request sent successfully",
+                "example": {
+                    "uid": "req_123",
+                    "message": "Friend request sent successfully",
+                    "receiver": {
+                        "uid": "acc_789",
+                        "username": "janedoe",
+                        "display_name": "Jane Doe"
+                    }
+                }
+            },
+            400: {
+                "description": "Bad request",
+                "examples": {
+                    "missing_field": {"error": "receiver_uid is required"},
+                    "self_request": {"error": "Cannot send friend request to yourself"},
+                    "already_friends": {"error": "You are already friends with this user"},
+                    "request_exists": {"error": "Friend request already exists"}
+                }
+            },
+            404: {"description": "Receiver account not found"},
+            401: {"description": "Authentication required"}
+        }
+    )
     @authenticate_request
     def post(self, request):
         """Send a friend request (requires authentication)"""
@@ -86,7 +164,7 @@ class FriendRequestView(APIView):
             
             # Validate required fields
             if 'receiver_uid' not in data:
-                return JsonResponse({'error': 'receiver_uid is required'}, status=400)
+                return Response({'error': 'receiver_uid is required'}, status=status.HTTP_400_BAD_REQUEST)
             
             # Use authenticated user as sender
             sender = request.user_account
@@ -95,21 +173,21 @@ class FriendRequestView(APIView):
             try:
                 receiver = Account.nodes.get(uid=data['receiver_uid'])
             except Account.DoesNotExist:
-                return JsonResponse({'error': 'Receiver account not found'}, status=404)
+                return Response({'error': 'Receiver account not found'}, status=status.HTTP_404_NOT_FOUND)
             
             # Check if trying to send request to self
             try:
                 if sender.uid == receiver.uid:
-                    return JsonResponse({'error': 'Cannot send friend request to yourself'}, status=400)
+                    return Response({'error': 'Cannot send friend request to yourself'}, status=status.HTTP_400_BAD_REQUEST)
             except AttributeError as e:
-                return JsonResponse({'error': f'UID access error: {str(e)}'}, status=500)
+                return Response({'error': f'UID access error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Check if they are already friends
             try:
                 if receiver in sender.friends.all():
-                    return JsonResponse({'error': 'You are already friends with this user'}, status=400)
+                    return Response({'error': 'You are already friends with this user'}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
-                return JsonResponse({'error': f'Friends check error: {str(e)}'}, status=500)
+                return Response({'error': f'Friends check error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Check if request already exists (in either direction)
             try:
@@ -118,9 +196,9 @@ class FriendRequestView(APIView):
                     req_sender = req.sender.single()
                     req_receiver = req.receiver.single()
                     if (req_sender.uid == sender.uid and req_receiver.uid == receiver.uid):
-                        return JsonResponse({'error': 'Friend request already sent'}, status=400)
+                        return Response({'error': 'Friend request already sent'}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
-                return JsonResponse({'error': f'Existing request check error: {str(e)}'}, status=500)
+                return Response({'error': f'Existing request check error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Check if there's a pending request from the other user
             try:
@@ -129,9 +207,9 @@ class FriendRequestView(APIView):
                     req_sender = req.sender.single()
                     req_receiver = req.receiver.single()
                     if (req_sender.uid == receiver.uid and req_receiver.uid == sender.uid):
-                        return JsonResponse({'error': 'This user has already sent you a friend request'}, status=400)
+                        return Response({'error': 'This user has already sent you a friend request'}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
-                return JsonResponse({'error': f'Reverse request check error: {str(e)}'}, status=500)
+                return Response({'error': f'Reverse request check error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Create friend request
             friend_request = FriendRequest(
@@ -142,19 +220,54 @@ class FriendRequestView(APIView):
             friend_request.sender.connect(sender)
             friend_request.receiver.connect(receiver)
             
-            return JsonResponse({
+            return Response({
                 'message': 'Friend request sent successfully',
                 'receiver': {
                     'uid': receiver.uid,
                     'username': receiver.username,
                     'display_name': receiver.display_name
                 }
-            }, status=201)
+            }, status=status.HTTP_201_CREATED)
         except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+            return Response({'error': 'Invalid JSON data'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    @extend_schema(
+        summary="Accept or reject a friend request",
+        description="Respond to a friend request by accepting or rejecting it. Only the receiver can respond.",
+        request={
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string", 
+                    "enum": ["accept", "reject"],
+                    "description": "Action to take on the friend request"
+                }
+            },
+            "required": ["action"],
+            "example": {"action": "accept"}
+        },
+        responses={
+            200: {
+                "description": "Friend request responded to successfully",
+                "examples": {
+                    "accepted": {"message": "Friend request accepted"},
+                    "rejected": {"message": "Friend request rejected"}
+                }
+            },
+            400: {
+                "description": "Bad request",
+                "examples": {
+                    "invalid_action": {"error": "Invalid action"},
+                    "invalid_json": {"error": "Invalid JSON data"}
+                }
+            },
+            403: {"description": "You can only respond to friend requests sent to you"},
+            404: {"description": "Friend request not found"},
+            401: {"description": "Authentication required"}
+        }
+    )
     @authenticate_request
     def put(self, request, request_id):
         """Accept or reject a friend request (requires authentication)"""
@@ -166,7 +279,7 @@ class FriendRequestView(APIView):
             
             # Check if the authenticated user is the receiver
             if friend_request.receiver.single().uid != request.user_account.uid:
-                return JsonResponse({'error': 'You can only respond to friend requests sent to you'}, status=403)
+                return Response({'error': 'You can only respond to friend requests sent to you'}, status=status.HTTP_403_FORBIDDEN)
             
             if action == 'accept':
                 friend_request.status = 'accepted'
@@ -179,17 +292,17 @@ class FriendRequestView(APIView):
                 sender.friends.connect(receiver)
                 receiver.friends.connect(sender)
                 
-                return JsonResponse({'message': 'Friend request accepted'})
+                return Response({'message': 'Friend request accepted'})
             
             elif action == 'reject':
                 friend_request.status = 'rejected'
                 friend_request.responded_at = datetime.now()
                 friend_request.save()
                 
-                return JsonResponse({'message': 'Friend request rejected'})
+                return Response({'message': 'Friend request rejected'})
             
             else:
-                return JsonResponse({'error': 'Invalid action'}, status=400)
+                return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

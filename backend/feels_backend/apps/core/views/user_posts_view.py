@@ -1,7 +1,7 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from drf_spectacular.utils import extend_schema
 from ..models import Account, Post
 from ..authentication import authenticate_request
 
@@ -9,10 +9,44 @@ from ..authentication import authenticate_request
 class UserPostsView(APIView):
     """API view for getting posts by a specific user"""
     
-    @method_decorator(csrf_exempt)
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
-    
+    @extend_schema(
+        summary="Get posts by a specific user",
+        description="Retrieve all posts by a specific user. Requires authentication and friendship (unless viewing own posts).",
+        responses={
+            200: {
+                "description": "List of user's posts",
+                "example": {
+                    "posts": [
+                        {
+                            "uid": "post_123",
+                            "body": "Having a great day!",
+                            "created_at": "2023-12-01T10:00:00Z",
+                            "likes_count": 5,
+                            "comments_count": 2,
+                            "author": {
+                                "uid": "acc_123",
+                                "username": "johndoe",
+                                "display_name": "John Doe"
+                            },
+                            "feeling": {
+                                "name": "Happy",
+                                "color": "#FFD700"
+                            }
+                        }
+                    ],
+                    "author": {
+                        "uid": "acc_123",
+                        "username": "johndoe",
+                        "display_name": "John Doe"
+                    },
+                    "count": 1
+                }
+            },
+            403: {"description": "Can only view posts from friends or self"},
+            404: {"description": "User not found"},
+            401: {"description": "Authentication required"}
+        }
+    )
     @authenticate_request
     def get(self, request, user_id):
         """Get posts by a specific user (requires authentication and friendship)"""
@@ -23,7 +57,7 @@ class UserPostsView(APIView):
             try:
                 target_user = Account.nodes.get(uid=user_id)
             except Account.DoesNotExist:
-                return JsonResponse({'error': 'User not found'}, status=404)
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
             
             # If requesting posts from self, allow access
             if requesting_user.uid == target_user.uid:
@@ -33,14 +67,14 @@ class UserPostsView(APIView):
                 # Check if users are friends
                 are_friends = target_user in requesting_user.friends.all()
                 if not are_friends:
-                    return JsonResponse({
+                    return Response({
                         'error': 'You can only view posts from users you are friends with',
                         'target_user': {
                             'uid': target_user.uid,
                             'username': target_user.username,
                             'display_name': target_user.display_name
                         }
-                    }, status=403)
+                    }, status=status.HTTP_403_FORBIDDEN)
                 
                 # Get posts by the target user
                 posts_query = Post.nodes.filter()
@@ -73,7 +107,7 @@ class UserPostsView(APIView):
             # Sort by creation date (newest first)
             posts_data.sort(key=lambda x: x['created_at'], reverse=True)
             
-            return JsonResponse({
+            return Response({
                 'posts': posts_data,
                 'author': {
                     'uid': target_user.uid,
@@ -84,4 +118,4 @@ class UserPostsView(APIView):
             })
             
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
