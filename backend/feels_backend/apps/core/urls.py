@@ -24,6 +24,7 @@ urlpatterns = [
     # Post endpoints
     path('posts/', views.PostView.as_view(), name='posts'),
     path('posts/<str:post_id>/', views.PostView.as_view(), name='post_detail'),
+    path('users/<str:user_id>/posts/', views.UserPostsView.as_view(), name='user_posts'),
     
     # Feeling endpoints
     path('feelings/', views.FeelingView.as_view(), name='feelings'),
