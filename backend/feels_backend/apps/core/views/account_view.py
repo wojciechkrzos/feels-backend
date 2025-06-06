@@ -17,7 +17,6 @@ class AccountView(APIView):
     """API views for Account management"""
 
 
-
     @extend_schema(
         summary="Get account details or list accounts",
         description="Retrieve a specific account by ID or list all accounts. Can filter by username, only_friends, exclude_friends.",
@@ -218,3 +217,49 @@ class AccountView(APIView):
             return Response({'error': f'Missing required field: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="Usuń znajomego",
+        description="Usuwa relację znajomości z użytkownikiem o podanym UID. Wymaga uwierzytelnienia.",
+        request={
+            "type": "object",
+            "properties": {
+                "friend_uid": {
+                    "type": "string",
+                    "description": "UID znajomego do usunięcia"
+                }
+            },
+            "required": ["friend_uid"],
+            "example": {"friend_uid": "acc_123"}
+        },
+        responses={
+            200: {"description": "Znajomy został usunięty", "example": {"message": "Znajomy został usunięty"}},
+            400: {"description": "Błąd walidacji", "examples": {
+                "brak_uid": {"error": "friend_uid jest wymagany"},
+                "nie_znajomy": {"error": "Ten użytkownik nie jest Twoim znajomym"}
+            }},
+            404: {"description": "Nie znaleziono użytkownika", "example": {"error": "Nie znaleziono użytkownika"}},
+            500: {"description": "Błąd serwera", "example": {"error": "Opis błędu"}}
+        }
+    )
+    @authenticate_request
+    def delete(self, request, account_id=None):
+        """Usuń znajomego (wymaga uwierzytelnienia)"""
+        try:
+            data = json.loads(request.body)
+            if 'friend_uid' not in data:
+                return Response({'error': 'friend_uid jest wymagany'}, status=400)
+
+            user = request.user_account
+            try:
+                friend = Account.nodes.get(uid=data['friend_uid'])
+            except Account.DoesNotExist:
+                return Response({'error': 'Nie znaleziono użytkownika'}, status=404)
+
+            if friend not in user.friends:
+                return Response({'error': 'Ten użytkownik nie jest Twoim znajomym'}, status=400)
+
+            user.friends.disconnect(friend)
+            return Response({'message': 'Znajomy został usunięty'})
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
