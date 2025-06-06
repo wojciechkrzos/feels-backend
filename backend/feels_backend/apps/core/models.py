@@ -84,33 +84,11 @@ class Post(StructuredNode):
     body = StringProperty(required=True)
     created_at = DateTimeProperty(default_now=True)
     updated_at = DateTimeProperty()
-    is_public = BooleanProperty(default=True)
-    likes_count = IntegerProperty(default=0)
-    comments_count = IntegerProperty(default=0)
     
     # Relationships
     author = RelationshipTo(Account, 'CREATED_BY')
     feeling = RelationshipTo(Feeling, 'EXPRESSES_FEELING')
-    comments = RelationshipFrom('Comment', 'COMMENT_ON')
-    liked_by = RelationshipFrom(Account, 'LIKES')
     read_by = RelationshipFrom(Account, 'READ_POST')
-
-
-class Comment(StructuredNode):
-    """
-    Represents a comment on a post
-    """
-    uid = UniqueIdProperty()
-    text = StringProperty(required=True)
-    created_at = DateTimeProperty(default_now=True)
-    updated_at = DateTimeProperty()
-    likes_count = IntegerProperty(default=0)
-    
-    # Relationships
-    author = RelationshipTo(Account, 'CREATED_BY')
-    post = RelationshipTo(Post, 'COMMENT_ON')
-    feeling = RelationshipTo(Feeling, 'EXPRESSES_FEELING')
-    liked_by = RelationshipFrom(Account, 'LIKES')
 
 
 class Chat(StructuredNode):
@@ -118,7 +96,7 @@ class Chat(StructuredNode):
     Represents a chat conversation between users
     """
     uid = UniqueIdProperty()
-    name = StringProperty()  # Optional chat name for group chats
+    name = StringProperty()
     is_group_chat = BooleanProperty(default=False)
     created_at = DateTimeProperty(default_now=True)
     last_message_at = DateTimeProperty()
@@ -145,4 +123,4 @@ class Message(StructuredNode):
     # Relationships
     sender = RelationshipTo(Account, 'SENT_BY')
     chat = RelationshipTo(Chat, 'SENT_TO')
-    feeling = RelationshipTo(Feeling, 'EXPRESSES_FEELING')  # Optional for feeling messages
+    feeling = RelationshipTo(Feeling, 'EXPRESSES_FEELING')  # OPTIONAL 
