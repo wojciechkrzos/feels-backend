@@ -1,13 +1,12 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.views import View
-
+from rest_framework.views import APIView
 from ..models import Account, Post
 from ..authentication import authenticate_request
 
 
-class UserPostsView(View):
+class UserPostsView(APIView):
     """API view for getting posts by a specific user"""
     
     @method_decorator(csrf_exempt)

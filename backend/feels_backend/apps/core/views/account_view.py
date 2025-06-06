@@ -1,14 +1,14 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.views import View
+from rest_framework.views import APIView
 import json
 
 from ..models import Account
 from ..authentication import hash_password
 
 
-class AccountView(View):
+class AccountView(APIView):
     """API views for Account management"""
     
     @method_decorator(csrf_exempt)

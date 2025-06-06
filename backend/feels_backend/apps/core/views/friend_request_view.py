@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.views import View
+from rest_framework.views import APIView
 import json
 from datetime import datetime
 
@@ -9,7 +9,7 @@ from ..models import Account, FriendRequest
 from ..authentication import authenticate_request
 
 
-class FriendRequestView(View):
+class FriendRequestView(APIView):
     """API views for Friend Request management"""
     
     @method_decorator(csrf_exempt)
