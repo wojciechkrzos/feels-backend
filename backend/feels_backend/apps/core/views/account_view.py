@@ -98,6 +98,8 @@ class AccountView(APIView):
                                 {
                                     'uid': account.uid,
                                     'username': account.username,
+                                    'bio': account.bio,
+                                    'created_at': account.created_at,
                                     'display_name': account.display_name,
                                     'feelings_shared_count': account.feelings_shared_count
                                 }
