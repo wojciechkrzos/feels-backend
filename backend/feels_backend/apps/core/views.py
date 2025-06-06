@@ -20,7 +20,7 @@ class AccountView(View):
 
     @authenticate_request
     def get(self, request, account_id=None):
-        """Get account details or list accounts (secured, with exclude_friends option)"""
+        """Get account details or list accounts (secured, with exclude_friends/only_friends option)"""
         try:
             if account_id:
                 account = Account.nodes.get(uid=account_id)
@@ -56,12 +56,17 @@ class AccountView(View):
                             'message': f'No account found with username: {username}'
                         })
 
+                only_friends = request.GET.get('only_friends', 'false').lower() == 'true'
                 exclude_friends = request.GET.get('exclude_friends', 'false').lower() == 'true'
-                accounts = Account.nodes.all()
-                if exclude_friends:
-                    user = request.user_account
-                    friends = set(friend.uid for friend in user.friends.all())
-                    accounts = [acc for acc in accounts if acc.uid != user.uid and acc.uid not in friends]
+                user = request.user_account
+
+                if only_friends:
+                    accounts = user.friends.all()
+                else:
+                    accounts = Account.nodes.all()
+                    if exclude_friends:
+                        friends = set(friend.uid for friend in user.friends.all())
+                        accounts = [acc for acc in accounts if acc.uid != user.uid and acc.uid not in friends]
 
                 return JsonResponse({
                     'accounts': [
