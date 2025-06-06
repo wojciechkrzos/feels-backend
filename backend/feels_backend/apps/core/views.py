@@ -146,6 +146,12 @@ class PostView(View):
                     } if feeling else None
                 })
             else:
+                # Check if filtering by author (user)
+                author_uid = request.GET.get('author_uid')
+                if author_uid:
+                    return self._get_posts_by_author(request, author_uid)
+                
+                # Return all posts if no filter
                 posts = Post.nodes.all()
                 posts_data = []
                 for post in posts:
@@ -228,6 +234,74 @@ class PostView(View):
             return JsonResponse(response_data, status=201)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
+    
+    @authenticate_request
+    def _get_posts_by_author(self, request, author_uid):
+        """Get posts by a specific author (requires authentication and friendship)"""
+        try:
+            requesting_user = request.user_account
+            
+            # Get the target user (author whose posts are being requested)
+            try:
+                target_user = Account.nodes.get(uid=author_uid)
+            except Account.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=404)
+            
+            # If requesting posts from self, allow access
+            if requesting_user.uid == target_user.uid:
+                posts_query = Post.nodes.filter()
+                posts = [post for post in posts_query if post.author.single().uid == target_user.uid]
+            else:
+                # Check if users are friends
+                are_friends = target_user in requesting_user.friends.all()
+                if not are_friends:
+                    return JsonResponse({
+                        'error': 'You can only view posts from users you are friends with'
+                    }, status=403)
+                
+                # Get posts by the target user
+                posts_query = Post.nodes.filter()
+                posts = [post for post in posts_query if post.author.single().uid == target_user.uid]
+            
+            # Format posts data
+            posts_data = []
+            for post in posts:
+                author = post.author.single()
+                feeling = post.feeling.single()
+                
+                post_data = {
+                    'uid': post.uid,
+                    'body': post.body,
+                    'created_at': str(post.created_at),
+                    'likes_count': post.likes_count,
+                    'comments_count': post.comments_count,
+                    'author': {
+                        'uid': author.uid,
+                        'username': author.username,
+                        'display_name': author.display_name
+                    },
+                    'feeling': {
+                        'name': feeling.name,
+                        'color': feeling.color
+                    } if feeling else None
+                }
+                posts_data.append(post_data)
+            
+            # Sort by creation date (newest first)
+            posts_data.sort(key=lambda x: x['created_at'], reverse=True)
+            
+            return JsonResponse({
+                'posts': posts_data,
+                'author': {
+                    'uid': target_user.uid,
+                    'username': target_user.username,
+                    'display_name': target_user.display_name
+                },
+                'count': len(posts_data)
+            })
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
 
 
 class FeelingView(View):
@@ -462,6 +536,87 @@ class FriendRequestView(View):
                 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
+
+
+class UserPostsView(View):
+    """API view for getting posts by a specific user"""
+    
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+    
+    @authenticate_request
+    def get(self, request, user_id):
+        """Get posts by a specific user (requires authentication and friendship)"""
+        try:
+            requesting_user = request.user_account
+            
+            # Get the target user (author whose posts are being requested)
+            try:
+                target_user = Account.nodes.get(uid=user_id)
+            except Account.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=404)
+            
+            # If requesting posts from self, allow access
+            if requesting_user.uid == target_user.uid:
+                posts_query = Post.nodes.filter()
+                posts = [post for post in posts_query if post.author.single().uid == target_user.uid]
+            else:
+                # Check if users are friends
+                are_friends = target_user in requesting_user.friends.all()
+                if not are_friends:
+                    return JsonResponse({
+                        'error': 'You can only view posts from users you are friends with',
+                        'target_user': {
+                            'uid': target_user.uid,
+                            'username': target_user.username,
+                            'display_name': target_user.display_name
+                        }
+                    }, status=403)
+                
+                # Get posts by the target user
+                posts_query = Post.nodes.filter()
+                posts = [post for post in posts_query if post.author.single().uid == target_user.uid]
+            
+            # Format posts data
+            posts_data = []
+            for post in posts:
+                author = post.author.single()
+                feeling = post.feeling.single()
+                
+                post_data = {
+                    'uid': post.uid,
+                    'body': post.body,
+                    'created_at': str(post.created_at),
+                    'likes_count': post.likes_count,
+                    'comments_count': post.comments_count,
+                    'author': {
+                        'uid': author.uid,
+                        'username': author.username,
+                        'display_name': author.display_name
+                    },
+                    'feeling': {
+                        'name': feeling.name,
+                        'color': feeling.color
+                    } if feeling else None
+                }
+                posts_data.append(post_data)
+            
+            # Sort by creation date (newest first)
+            posts_data.sort(key=lambda x: x['created_at'], reverse=True)
+            
+            return JsonResponse({
+                'posts': posts_data,
+                'author': {
+                    'uid': target_user.uid,
+                    'username': target_user.username,
+                    'display_name': target_user.display_name
+                },
+                'count': len(posts_data)
+            })
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
 
 
 # Create your views here.
