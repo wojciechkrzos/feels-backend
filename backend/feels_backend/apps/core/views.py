@@ -17,9 +17,10 @@ class AccountView(View):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
-    
+
+    @authenticate_request
     def get(self, request, account_id=None):
-        """Get account details or list accounts"""
+        """Get account details or list accounts (secured, with exclude_friends option)"""
         try:
             if account_id:
                 account = Account.nodes.get(uid=account_id)
@@ -35,7 +36,6 @@ class AccountView(View):
                     'last_active': str(account.last_active)
                 })
             else:
-                # Check if filtering by username
                 username = request.GET.get('username')
                 if username:
                     try:
@@ -55,9 +55,14 @@ class AccountView(View):
                             'accounts': [],
                             'message': f'No account found with username: {username}'
                         })
-                
-                # Return all accounts if no filter
+
+                exclude_friends = request.GET.get('exclude_friends', 'false').lower() == 'true'
                 accounts = Account.nodes.all()
+                if exclude_friends:
+                    user = request.user_account
+                    friends = set(friend.uid for friend in user.friends.all())
+                    accounts = [acc for acc in accounts if acc.uid != user.uid and acc.uid not in friends]
+
                 return JsonResponse({
                     'accounts': [
                         {
@@ -352,14 +357,13 @@ class FriendRequestView(View):
         """Send a friend request (requires authentication)"""
         try:
             data = json.loads(request.body)
-            
+
             # Validate required fields
             if 'receiver_uid' not in data:
                 return JsonResponse({'error': 'receiver_uid is required'}, status=400)
-            
+
             # Use authenticated user as sender
             sender = request.user_account
-            
             # Get receiver account
             try:
                 receiver = Account.nodes.get(uid=data['receiver_uid'])
