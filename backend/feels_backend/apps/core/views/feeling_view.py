@@ -1,13 +1,13 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.views import View
+from rest_framework.views import APIView
 import json
 
 from ..models import Feeling, FeelingType
 
 
-class FeelingView(View):
+class FeelingView(APIView):
     """API views for Feeling management"""
     
     @method_decorator(csrf_exempt)
