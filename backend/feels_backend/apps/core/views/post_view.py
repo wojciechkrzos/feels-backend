@@ -1,9 +1,10 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.views import View
-import json
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+import json
+
 from ..models import Account, Post, Feeling
 from ..authentication import authenticate_request
 
@@ -11,10 +12,57 @@ from ..authentication import authenticate_request
 class PostView(APIView):
     """API views for Post management"""
     
-    @method_decorator(csrf_exempt)
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
-    
+    @extend_schema(
+        summary="Get post details or list posts",
+        description="Retrieve a specific post by ID or list posts. Can filter by author.",
+        parameters=[
+            OpenApiParameter(
+                name='author_uid',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Filter posts by author UID'
+            )
+        ],
+        responses={
+            200: {
+                "description": "Post details or list of posts",
+                "examples": {
+                    "single_post": {
+                        "uid": "post_123",
+                        "body": "Feeling great today!",
+                        "created_at": "2023-12-01T10:00:00Z",
+                        "likes_count": 5,
+                        "comments_count": 2,
+                        "author": {
+                            "uid": "acc_123",
+                            "username": "johndoe",
+                            "display_name": "John Doe"
+                        },
+                        "feeling": {
+                            "name": "Happy",
+                            "color": "#FFD700"
+                        }
+                    },
+                    "post_list": {
+                        "posts": [
+                            {
+                                "uid": "post_123",
+                                "body": "Feeling great!",
+                                "created_at": "2023-12-01T10:00:00Z",
+                                "likes_count": 5,
+                                "author": {
+                                    "username": "johndoe",
+                                    "display_name": "John Doe"
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            404: {"description": "Post not found"},
+            500: {"description": "Internal server error"}
+        }
+    )
     def get(self, request, post_id=None):
         """Get post details or list posts"""
         try:
@@ -23,7 +71,7 @@ class PostView(APIView):
                 author = post.author.single()
                 feeling = post.feeling.single()
                 
-                return JsonResponse({
+                return Response({
                     'uid': post.uid,
                     'body': post.body,
                     'created_at': str(post.created_at),
@@ -70,14 +118,55 @@ class PostView(APIView):
                     }
                     posts_data.append(post_data)
                 
-                return JsonResponse({
+                return Response({
                     'posts': posts_data
                 })
         except Post.DoesNotExist:
-            return JsonResponse({'error': 'Post not found'}, status=404)
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    @extend_schema(
+        summary="Create a new post",
+        description="Create a new post with optional feeling connection. Requires authentication.",
+        request={
+            "type": "object",
+            "properties": {
+                "body": {"type": "string", "description": "Post content"},
+                "is_public": {"type": "boolean", "description": "Whether the post is public (default: true)"},
+                "feeling_name": {"type": "string", "description": "Name of the feeling to associate with the post (optional)"}
+            },
+            "required": ["body"],
+            "example": {
+                "body": "Had a great day at the beach!",
+                "is_public": True,
+                "feeling_name": "Happy"
+            }
+        },
+        responses={
+            201: {
+                "description": "Post created successfully",
+                "example": {
+                    "uid": "post_123",
+                    "body": "Had a great day at the beach!",
+                    "created_at": "2023-12-01T10:00:00Z",
+                    "is_public": True,
+                    "author": {
+                        "uid": "acc_123",
+                        "username": "johndoe",
+                        "display_name": "John Doe"
+                    },
+                    "feeling": {
+                        "name": "Happy",
+                        "color": "#FFD700"
+                    },
+                    "message": "Post created successfully"
+                }
+            },
+            400: {"description": "Bad request - validation error"},
+            401: {"description": "Authentication required"}
+        }
+    )
     @authenticate_request
     def post(self, request):
         """Create a new post (requires authentication)"""
@@ -123,9 +212,9 @@ class PostView(APIView):
                 if not feeling_connected:
                     response_data['warning'] = f"Feeling '{data['feeling_name']}' not found or could not be connected"
             
-            return JsonResponse(response_data, status=201)
+            return Response(response_data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     @authenticate_request
     def _get_posts_by_author(self, request, author_uid):
@@ -137,7 +226,7 @@ class PostView(APIView):
             try:
                 target_user = Account.nodes.get(uid=author_uid)
             except Account.DoesNotExist:
-                return JsonResponse({'error': 'User not found'}, status=404)
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
             
             # If requesting posts from self, allow access
             if requesting_user.uid == target_user.uid:
@@ -147,9 +236,9 @@ class PostView(APIView):
                 # Check if users are friends
                 are_friends = target_user in requesting_user.friends.all()
                 if not are_friends:
-                    return JsonResponse({
+                    return Response({
                         'error': 'You can only view posts from users you are friends with'
-                    }, status=403)
+                    }, status=status.HTTP_403_FORBIDDEN)
                 
                 # Get posts by the target user
                 posts_query = Post.nodes.filter()
@@ -182,7 +271,7 @@ class PostView(APIView):
             # Sort by creation date (newest first)
             posts_data.sort(key=lambda x: x['created_at'], reverse=True)
             
-            return JsonResponse({
+            return Response({
                 'posts': posts_data,
                 'author': {
                     'uid': target_user.uid,
@@ -193,4 +282,4 @@ class PostView(APIView):
             })
             
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
