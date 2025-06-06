@@ -6,22 +6,40 @@ from drf_spectacular.types import OpenApiTypes
 import json
 
 from ..models import Account
-from ..authentication import hash_password
+from ..authentication import hash_password, authenticate_request
+
+
+def str_to_bool(val):
+    return str(val).strip().lower() in ('true', '1', 'yes', 'on')
 
 
 class AccountView(APIView):
     """API views for Account management"""
-    
+
+
+
     @extend_schema(
         summary="Get account details or list accounts",
-        description="Retrieve a specific account by ID or list all accounts. Can filter by username.",
+        description="Retrieve a specific account by ID or list all accounts. Can filter by username, only_friends, exclude_friends.",
         parameters=[
             OpenApiParameter(
                 name='username',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
                 description='Filter accounts by username'
-            )
+            ),
+            OpenApiParameter(
+                name='only_friends',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Return only friends of the authenticated user'
+            ),
+            OpenApiParameter(
+                name='exclude_friends',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Exclude friends and self from the account list'
+            ),
         ],
         responses={
             200: {
@@ -54,8 +72,9 @@ class AccountView(APIView):
             500: {"description": "Internal server error"}
         }
     )
+    @authenticate_request
     def get(self, request, account_id=None):
-        """Get account details or list accounts"""
+        """Get account details or list accounts (secured, with exclude_friends/only_friends option)"""
         try:
             if account_id:
                 account = Account.nodes.get(uid=account_id)
@@ -71,7 +90,6 @@ class AccountView(APIView):
                     'last_active': str(account.last_active)
                 })
             else:
-                # Check if filtering by username
                 username = request.GET.get('username')
                 if username:
                     try:
@@ -91,9 +109,22 @@ class AccountView(APIView):
                             'accounts': [],
                             'message': f'No account found with username: {username}'
                         })
-                
-                # Return all accounts if no filter
-                accounts = Account.nodes.all()
+
+                only_friends = str_to_bool(request.GET.get('only_friends', False))
+                exclude_friends = str_to_bool(request.GET.get('exclude_friends', False))
+                if only_friends and exclude_friends:
+                    return Response({'error': 'Nie można jednocześnie użyć only_friends i exclude_friends.'},
+                                        status=400)
+
+                user = request.user_account
+                if only_friends:
+                    accounts = user.friends.all()
+                else:
+                    accounts = Account.nodes.all()
+                    if exclude_friends:
+                        friends = set(friend.uid for friend in user.friends.all())
+                        accounts = [acc for acc in accounts if acc.uid != user.uid and acc.uid not in friends]
+
                 return Response({
                     'accounts': [
                         {
@@ -105,9 +136,9 @@ class AccountView(APIView):
                     ]
                 })
         except Account.DoesNotExist:
-            return Response({'error': 'Account not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Account not found'}, status=404)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=500)
     
     @extend_schema(
         summary="Create a new account",
