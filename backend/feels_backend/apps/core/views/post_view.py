@@ -31,8 +31,6 @@ class PostView(APIView):
                         "uid": "post_123",
                         "body": "Feeling great today!",
                         "created_at": "2023-12-01T10:00:00Z",
-                        "likes_count": 5,
-                        "comments_count": 2,
                         "author": {
                             "uid": "acc_123",
                             "username": "johndoe",
@@ -49,7 +47,6 @@ class PostView(APIView):
                                 "uid": "post_123",
                                 "body": "Feeling great!",
                                 "created_at": "2023-12-01T10:00:00Z",
-                                "likes_count": 5,
                                 "author": {
                                     "username": "johndoe",
                                     "display_name": "John Doe"
@@ -75,8 +72,6 @@ class PostView(APIView):
                     'uid': post.uid,
                     'body': post.body,
                     'created_at': str(post.created_at),
-                    'likes_count': post.likes_count,
-                    'comments_count': post.comments_count,
                     'author': {
                         'uid': author.uid,
                         'username': author.username,
@@ -104,8 +99,6 @@ class PostView(APIView):
                         'uid': post.uid,
                         'body': post.body[:100] + '...' if len(post.body) > 100 else post.body,
                         'created_at': str(post.created_at),
-                        'likes_count': post.likes_count,
-                        'comments_count': post.comments_count,
                         'author': {
                             'uid': author.uid if author else None,
                             'username': author.username if author else 'Unknown',
@@ -133,13 +126,11 @@ class PostView(APIView):
             "type": "object",
             "properties": {
                 "body": {"type": "string", "description": "Post content"},
-                "is_public": {"type": "boolean", "description": "Whether the post is public (default: true)"},
                 "feeling_name": {"type": "string", "description": "Name of the feeling to associate with the post (optional)"}
             },
             "required": ["body"],
             "example": {
                 "body": "Had a great day at the beach!",
-                "is_public": True,
                 "feeling_name": "Happy"
             }
         },
@@ -150,7 +141,6 @@ class PostView(APIView):
                     "uid": "post_123",
                     "body": "Had a great day at the beach!",
                     "created_at": "2023-12-01T10:00:00Z",
-                    "is_public": True,
                     "author": {
                         "uid": "acc_123",
                         "username": "johndoe",
@@ -179,7 +169,6 @@ class PostView(APIView):
             # Create the post
             post = Post(
                 body=data['body'],
-                is_public=data.get('is_public', True)
             ).save()
             
             # Connect to author
@@ -254,8 +243,6 @@ class PostView(APIView):
                     'uid': post.uid,
                     'body': post.body,
                     'created_at': str(post.created_at),
-                    'likes_count': post.likes_count,
-                    'comments_count': post.comments_count,
                     'author': {
                         'uid': author.uid,
                         'username': author.username,

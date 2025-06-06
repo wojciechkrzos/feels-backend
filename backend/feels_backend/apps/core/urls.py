@@ -32,4 +32,9 @@ urlpatterns = [
     # Friend request endpoints
     path('friend-requests/', views.FriendRequestView.as_view(), name='friend_requests'),
     path('friend-requests/<str:request_id>/', views.FriendRequestView.as_view(), name='friend_request_detail'),
+    
+    # Chat endpoints
+    path('chats/', views.ChatView.as_view(), name='chats'),
+    path('chats/<str:chat_id>/', views.ChatView.as_view(), name='chat_detail'),
+    path('chats/<str:chat_id>/messages/', views.MessageView.as_view(), name='chat_messages'),
 ]

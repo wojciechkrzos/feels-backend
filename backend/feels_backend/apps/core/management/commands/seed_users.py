@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from apps.core.models import Account, Feeling, Post, Comment, Chat, Message
+from apps.core.models import Account, Feeling, Post, Chat, Message
 from datetime import datetime
 import random
 import hashlib
@@ -79,9 +79,6 @@ class Command(BaseCommand):
         for post_data in posts_data:
             post = Post(
                 body=post_data['body'],
-                is_public=True,
-                likes_count=random.randint(0, 15),
-                comments_count=random.randint(0, 5)
             ).save()
             
             # Connect to author
@@ -97,45 +94,6 @@ class Command(BaseCommand):
             author.save()
             
             self.stdout.write(f'Created post by {post_data["author"]}: "{post_data["body"][:50]}..."')
-        
-        # Create some comments
-        all_posts = Post.nodes.all()
-        comment_texts = [
-            "I can really relate to this feeling!",
-            "Thanks for sharing, this made my day better",
-            "Sending you positive vibes! 💙",
-            "I felt the same way yesterday",
-            "This is so beautifully expressed",
-            "Hope you feel better soon! 🌟",
-            "Love your perspective on this",
-            "Such an honest and heartfelt post"
-        ]
-        
-        account_list = list(accounts.values())
-        feeling_list = list(feelings.values())
-        
-        for post in all_posts[:5]:  # Add comments to first 5 posts
-            num_comments = random.randint(1, 3)
-            for _ in range(num_comments):
-                comment = Comment(
-                    text=random.choice(comment_texts),
-                    likes_count=random.randint(0, 8)
-                ).save()
-                
-                # Connect to random author (but not the post author)
-                possible_authors = [acc for acc in account_list if acc != post.author.single()]
-                comment_author = random.choice(possible_authors)
-                comment.author.connect(comment_author)
-                
-                # Connect to post
-                comment.post.connect(post)
-                
-                # Randomly connect to a feeling
-                if random.choice([True, False]):
-                    comment_feeling = random.choice(feeling_list)
-                    comment.feeling.connect(comment_feeling)
-        
-        self.stdout.write('Created sample comments')
         
         # Create a sample chat
         chat = Chat(

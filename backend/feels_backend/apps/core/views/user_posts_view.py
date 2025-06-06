@@ -21,8 +21,6 @@ class UserPostsView(APIView):
                             "uid": "post_123",
                             "body": "Having a great day!",
                             "created_at": "2023-12-01T10:00:00Z",
-                            "likes_count": 5,
-                            "comments_count": 2,
                             "author": {
                                 "uid": "acc_123",
                                 "username": "johndoe",
@@ -90,8 +88,6 @@ class UserPostsView(APIView):
                     'uid': post.uid,
                     'body': post.body,
                     'created_at': str(post.created_at),
-                    'likes_count': post.likes_count,
-                    'comments_count': post.comments_count,
                     'author': {
                         'uid': author.uid,
                         'username': author.username,
