@@ -104,6 +104,7 @@ class Chat(StructuredNode):
     # Relationships
     participants = RelationshipFrom(Account, 'PARTICIPATES_IN')
     messages = RelationshipFrom('Message', 'SENT_TO')
+    last_message = RelationshipTo('Message', 'LAST_MESSAGE')
 
 
 class Message(StructuredNode):

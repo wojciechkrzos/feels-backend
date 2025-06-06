@@ -41,7 +41,18 @@ class ChatView(APIView):
                                 "display_name": "John Doe"
                             }
                         ],
-                        "message_count": 15
+                        "message_count": 15,
+                        "last_message": {
+                            "uid": "msg_456",
+                            "text": "See you later!",
+                            "message_type": "text",
+                            "created_at": "2023-12-01T15:30:00Z",
+                            "sender": {
+                                "uid": "acc_123",
+                                "username": "johndoe",
+                                "display_name": "John Doe"
+                            }
+                        }
                     },
                     "chat_list": {
                         "chats": [
@@ -51,7 +62,18 @@ class ChatView(APIView):
                                 "is_group_chat": False,
                                 "last_message_at": "2023-12-01T15:30:00Z",
                                 "participants": ["johndoe"],
-                                "unread_count": 3
+                                "unread_count": 3,
+                                "last_message": {
+                                    "uid": "msg_456",
+                                    "text": "See you later!",
+                                    "message_type": "text",
+                                    "created_at": "2023-12-01T15:30:00Z",
+                                    "sender": {
+                                        "uid": "acc_123",
+                                        "username": "johndoe",
+                                        "display_name": "John Doe"
+                                    }
+                                }
                             }
                         ]
                     }
@@ -82,6 +104,7 @@ class ChatView(APIView):
                     }, status=status.HTTP_403_FORBIDDEN)
                 
                 messages = list(chat.messages.all())
+                last_message = chat.last_message.single() if chat.last_message.all() else None
                 
                 return Response({
                     'uid': chat.uid,
@@ -96,7 +119,18 @@ class ChatView(APIView):
                             'display_name': participant.display_name
                         } for participant in participants
                     ],
-                    'message_count': len(messages)
+                    'message_count': len(messages),
+                    'last_message': {
+                        'uid': last_message.uid,
+                        'text': last_message.text,
+                        'message_type': last_message.message_type,
+                        'created_at': str(last_message.created_at),
+                        'sender': {
+                            'uid': last_message.sender.single().uid,
+                            'username': last_message.sender.single().username,
+                            'display_name': last_message.sender.single().display_name
+                        } if last_message.sender.all() else None
+                    } if last_message else None
                 })
             else:
                 # List all user's chats
@@ -106,6 +140,7 @@ class ChatView(APIView):
                 for chat in user_chats:
                     participants = list(chat.participants.all())
                     messages = list(chat.messages.all())
+                    last_message = chat.last_message.single() if chat.last_message.all() else None
                     
                     # Count unread messages for this user
                     unread_count = sum(1 for msg in messages if not msg.is_read and msg.sender.single().uid != user.uid)
@@ -121,7 +156,18 @@ class ChatView(APIView):
                         'last_message_at': str(chat.last_message_at) if chat.last_message_at else None,
                         'participants': other_participants,
                         'unread_count': unread_count,
-                        'message_count': len(messages)
+                        'message_count': len(messages),
+                        'last_message': {
+                            'uid': last_message.uid,
+                            'text': last_message.text,
+                            'message_type': last_message.message_type,
+                            'created_at': str(last_message.created_at),
+                            'sender': {
+                                'uid': last_message.sender.single().uid,
+                                'username': last_message.sender.single().username,
+                                'display_name': last_message.sender.single().display_name
+                            } if last_message.sender.all() else None
+                        } if last_message else None
                     }
                     chats_data.append(chat_data)
                 
@@ -475,8 +521,15 @@ class MessageView(APIView):
                 except Exception as feeling_error:
                     print(f"Error connecting feeling '{data['feeling_name']}': {str(feeling_error)}")
             
-            # Update chat's last message time
+            # Update chat's last message time and last message reference
             chat.last_message_at = datetime.now()
+            
+            # Disconnect previous last message if it exists
+            if chat.last_message.all():
+                chat.last_message.disconnect_all()
+            
+            # Connect new message as last message
+            chat.last_message.connect(message)
             chat.save()
             
             # Return message details
