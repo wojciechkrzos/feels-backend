@@ -146,11 +146,11 @@ class ChatView(APIView):
                     unread_count = sum(1 for msg in messages if not msg.is_read and msg.sender.single().uid != user.uid)
                     
                     # Get other participants' usernames (exclude current user)
-                    other_participants = [p.username for p in participants if p.uid != user.uid]
+                    other_participants = [{"username": p.username} for p in participants if p.uid != user.uid]
                     
                     chat_data = {
                         'uid': chat.uid,
-                        'name': chat.name or f"Chat with {', '.join(other_participants)}",
+                        'name': chat.name or f"Chat with {', '.join(p['username'] for p in other_participants)}",
                         'is_group_chat': chat.is_group_chat,
                         'created_at': str(chat.created_at),
                         'last_message_at': str(chat.last_message_at) if chat.last_message_at else None,

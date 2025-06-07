@@ -92,6 +92,7 @@ class AuthView(View):
             action = data.get('action')  # 'register' or 'login'
             
             if action == 'register':
+                print("registering...")
                 return self.register(data)
             elif action == 'login':
                 return self.login(data)
@@ -113,7 +114,9 @@ class AuthView(View):
             
             # Check if email already exists
             try:
+                print(data)
                 existing_email = Account.nodes.get(email=data['email'])
+                print("email already exists")
                 return JsonResponse({'error': 'Email already exists'}, status=400)
             except Account.DoesNotExist:
                 pass  # Email is available
@@ -148,7 +151,9 @@ class AuthView(View):
         """Login an existing user"""
         try:
             username = data.get('username')
+            print(username)
             password = data.get('password')
+            print(password)
             
             if not username or not password:
                 return JsonResponse({'error': 'Username and password required'}, status=400)

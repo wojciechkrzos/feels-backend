@@ -323,7 +323,7 @@ def test_group_chat_workflow():
             print(f"   ✅ {user_name} has {chats_data['count']} chat(s)")
             for chat in chats_data['chats']:
                 print(f"      - {chat['name']} (ID: {chat['uid'][:8]}...)")
-                print(f"        Participants: {', '.join(chat['participants'])}")
+                print(f"        Participants: {', '.join(p['username'] for p in chat['participants'])}")
                 print(f"        Messages: {chat['message_count']}, Unread: {chat['unread_count']}")
         else:
             print(f"   ❌ Failed to get {user_name}'s chats: {response.status_code}")
