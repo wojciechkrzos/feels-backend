@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8002:8002"
+    environment:
+      NEO4J_BOLT_URL: bolt://neo4j:password@neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+      NEO4J_HOST: neo4j
+      NEO4J_PORT: 7687
+      SECRET_KEY: your-secret-key-here
+      DEBUG: True
+      ALLOWED_HOSTS: "*"
+      DJANGO_PORT: 8002
+      API_BASE_URL: http://localhost:8002/api
+      DATABASE_NAME: db.sqlite3
+    depends_on:
+      - neo4j
+    networks:
+      - internal
+
+  neo4j:
+    image: neo4j:5.19
+    environment:
+      NEO4J_AUTH: neo4j/password
+    ports:
+      - "7474:7474"
+    volumes:
+      - neo4j_data:/data
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  neo4j_data:

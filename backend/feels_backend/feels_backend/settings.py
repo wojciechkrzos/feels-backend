@@ -81,7 +81,7 @@ WSGI_APPLICATION = 'feels_backend.wsgi.application'
 # Neo4j Database Configuration
 # For development without Neo4j running, we'll use a mock connection
 # In production, change this to your actual Neo4j instance
-NEOMODEL_NEO4J_BOLT_URL = os.getenv('NEO4J_BOLT_URL', 'bolt://neo4j:password@localhost:7687')
+NEOMODEL_NEO4J_BOLT_URL = os.getenv('NEO4J_BOLT_URL', 'bolt://neo4j:password@neo4j:7687')
 
 # We'll also keep the SQLite database for Django's built-in features
 DATABASES = {
