@@ -1,7 +1,5 @@
 from django.core.management.base import BaseCommand
 from apps.core.models import Account, Feeling, Post, Chat, Message
-from datetime import datetime
-import random
 import hashlib
 
 
@@ -96,37 +94,61 @@ class Command(BaseCommand):
             self.stdout.write(f'Created post by {post_data["author"]}: "{post_data["body"][:50]}..."')
         
         # Create a sample chat
-        chat = Chat(
-            name="Feeling Support Group",
-            is_group_chat=True
+        chat1 = Chat(
+            name="Alice and bob",
+            is_group_chat=False
         ).save()
         
         # Add participants
-        for account in [alice, bob, charlie]:
-            chat.participants.connect(account)
+        for account in [alice, bob]:
+            chat1.participants.connect(account)
         
         # Create sample messages
-        messages_data = [
-            {'sender': alice, 'text': 'Hey everyone! How are you all feeling today?'},
+        messages1_data = [
+            {'sender': alice, 'text': 'Hey! How are you feeling today?'},
             {'sender': bob, 'text': 'Pretty good! Just got back from a run.', 'feeling': 'Energetic'},
-            {'sender': charlie, 'text': 'Been better, but this group always helps me feel less alone.'},
-            {'sender': alice, 'text': 'We are here for you, Charlie! 💙'},
+            {'sender': alice, 'text': 'That\'s nice! 💙'},
+            {'sender': alice, 'text': 'Have a nice day!', 'feeling': 'Peaceful'}
         ]
+
+        last_msg = None
         
-        for msg_data in messages_data:
+        for msg_data in messages1_data:
             message = Message(
                 text=msg_data['text'],
                 message_type='feeling' if 'feeling' in msg_data else 'text'
             ).save()
             
             message.sender.connect(msg_data['sender'])
-            message.chat.connect(chat)
+            message.chat.connect(chat1)
             
             if 'feeling' in msg_data:
                 feeling = feelings[msg_data['feeling']]
                 message.feeling.connect(feeling)
+
+            last_msg = message
+
+        chat1.last_message.connect(last_msg)
         
         self.stdout.write('Created sample chat and messages')
+
+        chat2 = Chat(
+            name="Alice and charlie",
+            is_group_chat=False
+        ).save()
+
+        chat2.participants.connect(alice)
+        chat2.participants.connect(charlie)
+
+        message2 = Message(
+            text = "Hey! Did you get home safe last night?",
+            message_type = 'feeling'
+        ).save()
+
+        message2.sender.connect(charlie)
+        message2.chat.connect(chat2)
+        message2.feeling.connect(feelings["Anxious"])
+        chat2.last_message.connect(message2)
         
         self.stdout.write(
             self.style.SUCCESS(

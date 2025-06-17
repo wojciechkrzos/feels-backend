@@ -9,6 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ./feels_backend /app
 
-RUN ls
-
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8002"]
